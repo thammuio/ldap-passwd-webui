@@ -5,7 +5,7 @@ import (
 	"net/http"
 
 	"github.com/dchest/captcha"
-	"github.com/npenkov/ldap-passwd-webui/app"
+	"github.com/thammuio/ldap-passwd-webui/app"
 )
 
 func main() {
@@ -16,6 +16,6 @@ func main() {
 	reHandler.HandleFunc("/", "POST", app.ChangePassword)
 	http.Handle("/captcha/", captcha.Server(captcha.StdWidth, captcha.StdHeight))
 	http.Handle("/", reHandler)
-	fmt.Println("Starting server on port 8080")
-	http.ListenAndServe(":8080", nil)
+	fmt.Println("Starting server on port 8443")
+	http.ListenAndServe(":8443", nil)
 }
