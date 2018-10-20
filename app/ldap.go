@@ -28,13 +28,13 @@ type LDAPClient struct {
 	SkipVerify       bool
 	BindDN           string // Template for the Bind DN
 	BindDNpass       string // Template for the Bind DN PAssword
-	UserSearchFilter       string // User Search Filter
+	UserSearchFilter string // User Search Filter
 	UserBase         string // Base search path for users
 	UserDN           string // Template for the DN of the user for simple auth
 	Enabled          bool   // if this LDAPClient is disabled
 }
 
-func bindUser(l *ldap.Conn, BindDN, BindDNpass string) error {
+func (ls *LDAPClient) bindUser(l *ldap.Conn, BindDN, BindDNpass string) error {
 	log.Printf("\nBinding with userDN: %s", BindDN)
 	err := l.Bind(BindDN, BindDNpass)
 	if err != nil {
@@ -123,7 +123,7 @@ func (ls *LDAPClient) ModifyPassword(name, passwd, newPassword string) error {
 	bindUser(l, BindDN, BindDNpass)
 
 	newUserSearchFilter, ok = ls.sanitizedUserDN(UserSearchFilter)
-	log.Printf("\nnewUserSearchFilter is: %s", ls.newUserSearchFilter)
+	log.Printf("\nnewUserSearchFilter is: %s", newUserSearchFilter)
 
 	// Search for the given username to get DN
 	searchRequest := NewSearchRequest(
