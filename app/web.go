@@ -117,7 +117,9 @@ func ChangePassword(w http.ResponseWriter, req *http.Request) {
 	if len(alerts) == 0 {
 		client := NewLDAPClient()
 		if err := client.ModifyPassword(un, oldPassword[0], newPassword[0]); err != nil {
-			alerts["error"] = fmt.Sprintf("%v", err)
+			// alerts["error"] = fmt.Sprintf("%v", err)
+			alerts["error"] = fmt.Sprintf("Something Went Wrong!! Not Able to Change your Password because of :  %v", err)
+
 		} else {
 			alerts["success"] = "Password successfuly changed"
 		}

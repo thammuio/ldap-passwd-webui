@@ -192,9 +192,9 @@ func (ls *LDAPClient) ModifyPassword(name, passwd, newPassword string) error {
 	_, err = l.PasswordModify(req)
 
 	if err != nil {
-		log.Fatal(err)
+		log.Printf("\n Not able to Change Password for user %s, reason: %v", newUserDN, err)
 	}
-	
+
 	return err
 
 
