@@ -34,29 +34,61 @@ type LDAPClient struct {
 	Enabled          bool   // if this LDAPClient is disabled
 }
 
-func (ls *LDAPClient) bindUser(l *ldap.Conn, BindDN, BindDNpass string) error {
-	log.Printf("\nBinding with userDN: %s", BindDN)
-	err := l.Bind(BindDN, BindDNpass)
+func bindUserDN(l *ldap.Conn, bindDN, bindDNpass string) error {
+	log.Printf("\nBinding with bindDN: %s", bindDN)
+	err := l.Bind(bindDN, bindDNpass)
 	if err != nil {
-		log.Printf("\nLDAP auth. failed for %s, reason: %v", BindDN, err)
+		log.Printf("\nLDAP auth. failed for %s, reason: %v", bindDN, err)
 		return err
 	}
-	log.Printf("\nBound successfully with BindDN: %s", BindDN)
+	log.Printf("\nBound successfully with bindDN: %s", bindDN)
 	return err
 }
 
+func (ls *LDAPClient) bindDN(l *ldap.Conn) error {
+	log.Printf("\nBinding with bindDN: %s", ls.BindDN)
+	err := l.Bind(ls.BindDN, ls.BindDNpass)
+	if err != nil {
+		log.Printf("\nLDAP auth. failed for %s, reason: %v", ls.BindDN, err)
+		return err
+	}
+	log.Printf("\nBound successfully with bindDN: %s", ls.BindDN)
+	return err
+}
 
-
-func (ls *LDAPClient) sanitizedUserDN(username string) (string, bool) {
+func (ls *LDAPClient) sanitizedFilter(filter) (string, bool) {
 	// See http://tools.ietf.org/search/rfc4514: "special characters"
 	badCharacters := "\x00()*\\,='\"#+;<>"
-	if strings.ContainsAny(username, badCharacters) {
-		log.Printf("\n'%s' contains invalid DN characters. Aborting.", username)
+	if strings.ContainsAny(filter, badCharacters) {
+		log.Printf("\n'%s' contains invalid DN characters. Aborting.", filter)
 		return "", false
 	}
 
-	return fmt.Sprintf(ls.UserDN, username), true
+	return fmt.Sprintf(ls.UserSearchFilter, filter), true
 }
+
+// func (ls *LDAPClient) sanitizedUserDN(username) (string, bool) {
+// 	// See http://tools.ietf.org/search/rfc4514: "special characters"
+// 	badCharacters := "\x00()*\\,='\"#+;<>"
+// 	if strings.ContainsAny(username, badCharacters) {
+// 		log.Printf("\n'%s' contains invalid DN characters. Aborting.", username)
+// 		return "", false
+// 	}
+
+// 	return fmt.Sprintf(ls.UserDN, username), true
+// }
+
+// func (ls *LDAPClient) sanitizedBindDN(username) (string, bool) {
+// 	// See http://tools.ietf.org/search/rfc4514: "special characters"
+// 	badCharacters := "\x00()*\\,='\"#+;<>"
+// 	if strings.ContainsAny(username, badCharacters) {
+// 		log.Printf("\n'%s' contains invalid DN characters. Aborting.", username)
+// 		return "", false
+// 	}
+
+// 	return fmt.Sprintf(ls.BindDN, username), true
+// }
+
 
 func dial(ls *LDAPClient) (*ldap.Conn, error) {
 	log.Printf("\nDialing LDAP with security protocol (%v) without verifying: %v", ls.SecurityProtocol, ls.SkipVerify)
@@ -114,20 +146,22 @@ func (ls *LDAPClient) ModifyPassword(name, passwd, newPassword string) error {
 	log.Printf("\nLDAP will bind directly via BindDN template: %s", ls.BindDN)
 
 	var ok bool
-	BindDN, ok = ls.sanitizedUserDN(BindDN)
-	if !ok {
-		return fmt.Errorf("Error sanitizing name %s", ls.BindDN)
-	}
+	var userDN string
+	//BindDN, ok = ls.sanitizedUserDN(ls.BindDN)
+	// if !ok {
+	// 	return fmt.Errorf("Error sanitizing name %s", ls.BindDN)
+	// }
 
 	// bind with BindUSerDN to get user DN
-	bindUser(l, BindDN, BindDNpass)
+	bindDN(l)
 
-	newUserSearchFilter, ok = ls.sanitizedUserDN(UserSearchFilter)
+	var newUserSearchFilter string
+	newUserSearchFilter, ok = ls.sanitizedFilter(ls.UserSearchFilter)
 	log.Printf("\nnewUserSearchFilter is: %s", newUserSearchFilter)
 
 	// Search for the given username to get DN
 	searchRequest := NewSearchRequest(
-		UserBase, // The base dn to search
+		ls.UserBase, // The base dn to search
 		ScopeWholeSubtree, NeverDerefAliases, 0, 0, false,
 		newUserSearchFilter, // The filter to apply
 		[]string{"dn"}, // A list attributes to retrieve
@@ -142,15 +176,15 @@ func (ls *LDAPClient) ModifyPassword(name, passwd, newPassword string) error {
 	if len(sr.Entries) != 1 {
 		log.Fatal("User does not exist or too many entries returned")
 	}
-
+	var newUserDN string
 	newUserDN := sr.Entries[0].DN
-	log.Printf("\n searched newUserDN: %s", ls.newUserDN)
+	log.Printf("\n searched newUserDN: %s", newUserDN)
 
 	// SearchtoGetUserDN(name)
 	// bindUser(l, BindDN, BindDNpass)
 
     // Bind as the user to verify their password
-	bindUser(l, newUserDN, passwd)
+	bindUserDN(l, newUserDN, passwd)
 
 	log.Printf("\nLDAP will execute password change on: %s", newUserDN)
 	req := ldap.NewPasswordModifyRequest(newUserDN, passwd, newPassword)
