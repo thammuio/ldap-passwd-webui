@@ -184,14 +184,20 @@ func (ls *LDAPClient) ModifyPassword(name, passwd, newPassword string) error {
 	// SearchtoGetUserDN(name)
 	// bindUser(l, BindDN, BindDNpass)
 
-    // Bind as the user to verify their password
-	bindUserDN(l, newUserDN, passwd)
+    // Bind as the user to verify their password - don't need to bind again
+	// bindUserDN(l, newUserDN, passwd)
 
 	log.Printf("\nLDAP will execute password change on: %s", newUserDN)
 	req := ldap.NewPasswordModifyRequest(newUserDN, passwd, newPassword)
 	_, err = l.PasswordModify(req)
 
+	if err != nil {
+		log.Fatal(err)
+	}
+	
 	return err
+
+
 }
 
 // // Serch with sAMAccountName to get the UserDN -- Might not needed this
