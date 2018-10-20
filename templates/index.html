@@ -44,6 +44,11 @@
     </script>
     <main>
       <h1>{{.Title}}</h1>
+      <div class="alerts">
+       {{ range $key, $value := .Alerts }}
+          <div class="alert {{ $key }}">{{ $value }}</div>
+       {{ end }}
+      </div>
 
       <form method="post">
         <label for="username">Username</label>
@@ -71,11 +76,7 @@
         <button type="submit">Update password</button>
       </form>
 
-      <div class="alerts">
-       {{ range $key, $value := .Alerts }}
-          <div class="alert {{ $key }}">{{ $value }}</div>
-       {{ end }}
-      </div>
+
     </main>
   </body>
 </html>
