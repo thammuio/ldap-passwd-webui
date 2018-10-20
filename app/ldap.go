@@ -142,10 +142,10 @@ func (ls *LDAPClient) ModifyPassword(name, passwd, newPassword string) error {
 	}
 	defer l.Close()
 
-	var userDN string
+	// var userDN string
 	log.Printf("\nLDAP will bind directly via BindDN template: %s", ls.BindDN)
 
-	var ok bool
+	// var ok bool
 
 	//BindDN, ok = ls.sanitizedUserDN(ls.BindDN)
 	// if !ok {
