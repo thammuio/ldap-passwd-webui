@@ -153,7 +153,7 @@ func (ls *LDAPClient) ModifyPassword(name, passwd, newPassword string) error {
 	// }
 
 	// bind with BindUSerDN to get user DN
-	bindDN(l)
+	ls.bindDN(l)
 
 	var newUserSearchFilter string
 	// newUserSearchFilter, ok = ls.sanitizedFilter(ls.UserSearchFilter)
@@ -164,7 +164,7 @@ func (ls *LDAPClient) ModifyPassword(name, passwd, newPassword string) error {
 		ls.UserBase, // The base dn to search
 		ScopeWholeSubtree, NeverDerefAliases, 0, 0, false,
 		// newUserSearchFilter, // The filter to apply
-		fmt.Sprintf(ls.UserSearchFilter, user),
+		fmt.Sprintf(ls.UserSearchFilter, name),
 		[]string{"dn"}, // A list attributes to retrieve
 		nil,
 	)
@@ -177,7 +177,7 @@ func (ls *LDAPClient) ModifyPassword(name, passwd, newPassword string) error {
 	if len(sr.Entries) != 1 {
 		log.Fatal("User does not exist or too many entries returned")
 	}
-	var newUserDN string
+	
 	newUserDN := sr.Entries[0].DN
 	log.Printf("\n searched newUserDN: %s", newUserDN)
 
