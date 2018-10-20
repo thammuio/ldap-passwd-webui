@@ -7,6 +7,7 @@ import (
 
 
 	"gopkg.in/ldap.v2"
+	"golang.org/x/text/encoding/unicode"
 )
 
 // SecurityProtocol protocol type
@@ -187,7 +188,17 @@ func (ls *LDAPClient) ModifyPassword(name, passwd, newPassword string) error {
     // Bind as the user to verify their password - don't need to bind again
 	// bindUserDN(l, newUserDN, passwd)
 
+
+	// Will check on this later
+	// utf16 := unicode.UTF16(unicode.LittleEndian, unicode.IgnoreBOM)
+	// According to the MS docs in the links above
+	// The password needs to be enclosed in quotes
+	// pwdEncoded, _ := utf16.NewEncoder().String("\"testpassword\"")
+	// passwdEncoded, _ := utf16.NewEncoder().String(passwd)
+	// newPasswordEncoded, _ := utf16.NewEncoder().String(newPassword)
+
 	log.Printf("\nLDAP will execute password change on: %s", newUserDN)
+
 	req := ldap.NewPasswordModifyRequest(newUserDN, passwd, newPassword)
 	_, err = l.PasswordModify(req)
 
