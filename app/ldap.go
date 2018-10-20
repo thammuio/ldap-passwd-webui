@@ -168,7 +168,7 @@ func (ls *LDAPClient) ModifyPassword(name, passwd, newPassword string) error {
 	// 	[]string{"dn"}, // A list attributes to retrieve
 	// 	nil,
 	// )
-	searchRequest := ldap.NewSearchRequest(ls.UserBase, ScopeWholeSubtree, NeverDerefAliases, 0, 0, false, fmt.Sprintf(ls.UserSearchFilter, name), []string{"dn"}, nil)
+	searchRequest := ldap.NewSearchRequest(ls.UserBase, 2, 0, 0, 0, false, fmt.Sprintf(ls.UserSearchFilter, name), []string{"dn"}, nil)
 	sr, err := l.Search(searchRequest)
 	if err != nil {
 		log.Fatal(err)
