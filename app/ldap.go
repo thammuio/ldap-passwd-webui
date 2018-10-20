@@ -56,16 +56,16 @@ func (ls *LDAPClient) bindDN(l *ldap.Conn) error {
 	return err
 }
 
-func (ls *LDAPClient) sanitizedFilter(filter) (string, bool) {
-	// See http://tools.ietf.org/search/rfc4514: "special characters"
-	badCharacters := "\x00()*\\,='\"#+;<>"
-	if strings.ContainsAny(filter, badCharacters) {
-		log.Printf("\n'%s' contains invalid DN characters. Aborting.", filter)
-		return "", false
-	}
+// func (ls *LDAPClient) sanitizedFilter(filter) (string, bool) {
+// 	// See http://tools.ietf.org/search/rfc4514: "special characters"
+// 	badCharacters := "\x00()*\\,='\"#+;<>"
+// 	if strings.ContainsAny(filter, badCharacters) {
+// 		log.Printf("\n'%s' contains invalid DN characters. Aborting.", filter)
+// 		return "", false
+// 	}
 
-	return fmt.Sprintf(ls.UserSearchFilter, filter), true
-}
+// 	return fmt.Sprintf(ls.UserSearchFilter, filter), true
+// }
 
 // func (ls *LDAPClient) sanitizedUserDN(username) (string, bool) {
 // 	// See http://tools.ietf.org/search/rfc4514: "special characters"
@@ -146,7 +146,7 @@ func (ls *LDAPClient) ModifyPassword(name, passwd, newPassword string) error {
 	log.Printf("\nLDAP will bind directly via BindDN template: %s", ls.BindDN)
 
 	var ok bool
-	var userDN string
+
 	//BindDN, ok = ls.sanitizedUserDN(ls.BindDN)
 	// if !ok {
 	// 	return fmt.Errorf("Error sanitizing name %s", ls.BindDN)
@@ -156,14 +156,15 @@ func (ls *LDAPClient) ModifyPassword(name, passwd, newPassword string) error {
 	bindDN(l)
 
 	var newUserSearchFilter string
-	newUserSearchFilter, ok = ls.sanitizedFilter(ls.UserSearchFilter)
+	// newUserSearchFilter, ok = ls.sanitizedFilter(ls.UserSearchFilter)
 	log.Printf("\nnewUserSearchFilter is: %s", newUserSearchFilter)
 
 	// Search for the given username to get DN
-	searchRequest := NewSearchRequest(
+	searchRequest := ldap.NewSearchRequest(
 		ls.UserBase, // The base dn to search
 		ScopeWholeSubtree, NeverDerefAliases, 0, 0, false,
-		newUserSearchFilter, // The filter to apply
+		// newUserSearchFilter, // The filter to apply
+		fmt.Sprintf(ls.UserSearchFilter, user),
 		[]string{"dn"}, // A list attributes to retrieve
 		nil,
 	)
