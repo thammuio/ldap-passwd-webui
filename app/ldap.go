@@ -26,21 +26,26 @@ type LDAPClient struct {
 	Port             int    // port number
 	SecurityProtocol SecurityProtocol
 	SkipVerify       bool
+	BindDN           string // Template for the Bind DN
+	BindDNpass       string // Template for the Bind DN PAssword
+	UserSearchFilter       string // User Search Filter
 	UserBase         string // Base search path for users
 	UserDN           string // Template for the DN of the user for simple auth
 	Enabled          bool   // if this LDAPClient is disabled
 }
 
-func bindUser(l *ldap.Conn, userDN, passwd string) error {
-	log.Printf("\nBinding with userDN: %s", userDN)
-	err := l.Bind(userDN, passwd)
+func bindUser(l *ldap.Conn, BindDN, BindDNpass string) error {
+	log.Printf("\nBinding with userDN: %s", BindDN)
+	err := l.Bind(BindDN, BindDNpass)
 	if err != nil {
-		log.Printf("\nLDAP auth. failed for %s, reason: %v", userDN, err)
+		log.Printf("\nLDAP auth. failed for %s, reason: %v", BindDN, err)
 		return err
 	}
-	log.Printf("\nBound successfully with userDN: %s", userDN)
+	log.Printf("\nBound successfully with BindDN: %s", BindDN)
 	return err
 }
+
+
 
 func (ls *LDAPClient) sanitizedUserDN(username string) (string, bool) {
 	// See http://tools.ietf.org/search/rfc4514: "special characters"
@@ -81,6 +86,20 @@ func dial(ls *LDAPClient) (*ldap.Conn, error) {
 
 // ModifyPassword : modify user's password
 func (ls *LDAPClient) ModifyPassword(name, passwd, newPassword string) error {
+	// Printing all variables
+	log.Printf("\n ====================================")
+	log.Printf("\n Host: %s", ls.Host)
+	log.Printf("\nPort: %s", ls.Port)
+	log.Printf("\nSecurityProtocol: %s", ls.SecurityProtocol)
+	log.Printf("\nSkipVerify: %s", ls.SkipVerify)
+	log.Printf("\nBindDNpass: %s", ls.BindDNpass)
+	log.Printf("\nBindDN: %s", ls.BindDN)
+	log.Printf("\nUserSearchFilter: %s", ls.UserSearchFilter)
+	log.Printf("\nUserDN %s", ls.UserDN)
+	log.Printf("\nUserBase %s", ls.UserBase)
+	log.Printf("\n ====================================")
+
+
 	if len(passwd) == 0 {
 		return fmt.Errorf("Auth. failed for %s, password cannot be empty", name)
 	}
@@ -92,21 +111,87 @@ func (ls *LDAPClient) ModifyPassword(name, passwd, newPassword string) error {
 	defer l.Close()
 
 	var userDN string
-	log.Printf("\nLDAP will bind directly via UserDN template: %s", ls.UserDN)
+	log.Printf("\nLDAP will bind directly via BindDN template: %s", ls.BindDN)
 
 	var ok bool
-	userDN, ok = ls.sanitizedUserDN(name)
+	BindDN, ok = ls.sanitizedUserDN(BindDN)
 	if !ok {
-		return fmt.Errorf("Error sanitizing name %s", name)
+		return fmt.Errorf("Error sanitizing name %s", ls.BindDN)
 	}
-	bindUser(l, userDN, passwd)
 
-	log.Printf("\nLDAP will execute password change on: %s", userDN)
-	req := ldap.NewPasswordModifyRequest(userDN, passwd, newPassword)
+	// bind with BindUSerDN to get user DN
+	bindUser(l, BindDN, BindDNpass)
+
+	newUserSearchFilter, ok = ls.sanitizedUserDN(UserSearchFilter)
+	log.Printf("\nnewUserSearchFilter is: %s", ls.newUserSearchFilter)
+
+	// Search for the given username to get DN
+	searchRequest := NewSearchRequest(
+		UserBase, // The base dn to search
+		ScopeWholeSubtree, NeverDerefAliases, 0, 0, false,
+		newUserSearchFilter, // The filter to apply
+		[]string{"dn"}, // A list attributes to retrieve
+		nil,
+	)
+
+	sr, err := l.Search(searchRequest)
+	if err != nil {
+		log.Fatal(err)
+	}
+
+	if len(sr.Entries) != 1 {
+		log.Fatal("User does not exist or too many entries returned")
+	}
+
+	newUserDN := sr.Entries[0].DN
+	log.Printf("\n searched newUserDN: %s", ls.newUserDN)
+
+	// SearchtoGetUserDN(name)
+	// bindUser(l, BindDN, BindDNpass)
+
+    // Bind as the user to verify their password
+	bindUser(l, newUserDN, passwd)
+
+	log.Printf("\nLDAP will execute password change on: %s", newUserDN)
+	req := ldap.NewPasswordModifyRequest(newUserDN, passwd, newPassword)
 	_, err = l.PasswordModify(req)
 
 	return err
 }
+
+// // Serch with sAMAccountName to get the UserDN -- Might not needed this
+// func (ls *LDAPClient) SearchtoGetUserDN(name) {
+	
+// 	if len(BindDNpass) == 0 {
+// 		return fmt.Errorf("Auth. failed for %s, password cannot be empty", BindDN)
+// 	}
+// 	l, err := dial(ls)
+// 	if err != nil {
+// 		ls.Enabled = false
+// 		return fmt.Errorf("LDAP Connect error, %s:%v", ls.Host, err)
+// 	}
+// 	defer l.Close()
+// 	bindUser(l, BindDN, BindDNpass)
+
+
+// 	searchRequest := NewSearchRequest(
+// 		UserBase, // The base dn to search
+// 		ScopeWholeSubtree, NeverDerefAliases, 0, 0, false,
+// 		UserSearchFilter, // The filter to apply
+// 		[]string{"dn", "cn"},                    // A list attributes to retrieve
+// 		nil,
+// 	)
+
+// 	sr, err := l.Search(searchRequest)
+// 	if err != nil {
+// 		log.Fatal(err)
+// 	}
+
+// 	for _, entry := range sr.Entries {
+// 		fmt.Printf("%s: %v\n", entry.DN, entry.GetAttributeValue("cn"))
+// 	}
+// }
+
 
 // NewLDAPClient : Creates new LDAPClient capable of binding and changing passwords
 func NewLDAPClient() *LDAPClient {
@@ -124,6 +209,9 @@ func NewLDAPClient() *LDAPClient {
 		Port:             envInt("LPW_PORT", 636), // 389
 		SecurityProtocol: securityProtocol,
 		SkipVerify:       envBool("LPW_SSL_SKIP_VERIFY", false),
+		BindDN:           envStr("LPW_BIND_DN", ""),
+		BindDNpass:       envStr("LPW_BIND_DN_PASS", ""),
+		UserSearchFilter: envStr("LPW_USER_SEARCH_FILTER", "sAMAccountName=%s"),
 		UserDN:           envStr("LPW_USER_DN", "uid=%s,ou=people,dc=example,dc=org"),
 		UserBase:         envStr("LPW_USER_BASE", "ou=people,dc=example,dc=org"),
 	}
