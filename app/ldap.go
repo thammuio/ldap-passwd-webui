@@ -160,15 +160,15 @@ func (ls *LDAPClient) ModifyPassword(name, passwd, newPassword string) error {
 	log.Printf("\nnewUserSearchFilter is: %s", newUserSearchFilter)
 
 	// Search for the given username to get DN
-	searchRequest := ldap.NewSearchRequest(
-		ls.UserBase, // The base dn to search
-		ScopeWholeSubtree, NeverDerefAliases, 0, 0, false,
-		// newUserSearchFilter, // The filter to apply
-		fmt.Sprintf(ls.UserSearchFilter, name),
-		[]string{"dn"}, // A list attributes to retrieve
-		nil,
-	)
-
+	// searchRequest := ldap.NewSearchRequest(
+	// 	ls.UserBase, // The base dn to search
+	// 	ScopeWholeSubtree, NeverDerefAliases, 0, 0, false,
+	// 	// newUserSearchFilter, // The filter to apply
+	// 	fmt.Sprintf(ls.UserSearchFilter, name),
+	// 	[]string{"dn"}, // A list attributes to retrieve
+	// 	nil,
+	// )
+	searchRequest := ldap.NewSearchRequest(ls.UserBase, ScopeWholeSubtree, NeverDerefAliases, 0, 0, false, fmt.Sprintf(ls.UserSearchFilter, name), []string{"dn"}, nil)
 	sr, err := l.Search(searchRequest)
 	if err != nil {
 		log.Fatal(err)
