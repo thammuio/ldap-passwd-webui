@@ -57,6 +57,19 @@ func (ls *LDAPClient) bindDN(l *ldap.Conn) error {
 	return err
 }
 
+
+func (ls *LDAPClient) bindUserDNAgain(l *ldap.Conn, newUserDN, passwd strng) error {
+	log.Printf("\nBinding with userDN: %s", newUserDN)
+	log.Printf("\nBinding with userDN passwd: %s", passwd)
+	err := l.Bind(newUserDN, passwd)
+	if err != nil {
+		log.Printf("\nLDAP auth. failed for %s, reason: %v", newUserDN, err)
+		return err
+	}
+	log.Printf("\nBound successfully with bindDN: %s", newUserDN)
+	return err
+}
+
 // func (ls *LDAPClient) sanitizedFilter(filter) (string, bool) {
 // 	// See http://tools.ietf.org/search/rfc4514: "special characters"
 // 	badCharacters := "\x00()*\\,='\"#+;<>"
@@ -198,6 +211,8 @@ func (ls *LDAPClient) ModifyPassword(name, passwd, newPassword string) error {
 	// newPasswordEncoded, _ := utf16.NewEncoder().String(newPassword)
 
 	log.Printf("\nLDAP will execute password change on: %s", newUserDN)
+
+	ls.bindUserDNAgain(l, newUserDN, passwd)
 
 	req := ldap.NewPasswordModifyRequest(newUserDN, passwd, newPassword)
 	_, err = l.PasswordModify(req)
