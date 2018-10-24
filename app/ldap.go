@@ -209,8 +209,8 @@ func (ls *LDAPClient) ModifyPassword(name, passwd, newPassword string) error {
 
 
 	// flow based on AD/LDAP
-	if ls.LDAPType == AD {
-		
+	if ls.LDAPType == "AD" {
+	log.Printf("\nin AD Flow")
 	ls.bindUserDNAgain(l, newUserDN, passwd)
 
     utf16 := unicode.UTF16(unicode.LittleEndian, unicode.IgnoreBOM)
@@ -228,7 +228,7 @@ func (ls *LDAPClient) ModifyPassword(name, passwd, newPassword string) error {
 		{"unicodePwd", []string{newPasswordEncoded}},
 	},
 	}
-	_, err = l.Modify(passReq)
+	err = l.Modify(passReq)
 
 	if err != nil {
 		log.Printf("\n Not able to Change Password for user %s, reason: %v", newUserDN, err)
@@ -236,6 +236,8 @@ func (ls *LDAPClient) ModifyPassword(name, passwd, newPassword string) error {
 	return err
 
 	} else {
+
+	log.Printf("\nin LDAP Flow")
 
 	ls.bindUserDNAgain(l, newUserDN, passwd)
 
