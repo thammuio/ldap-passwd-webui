@@ -7,7 +7,7 @@ import (
 
 
 	"gopkg.in/ldap.v2"
-//	"golang.org/x/text/encoding/unicode"
+	"golang.org/x/text/encoding/unicode"
 )
 
 // SecurityProtocol protocol type
@@ -25,6 +25,7 @@ type LDAPClient struct {
 	Name             string // canonical name (ie. corporate.ad)
 	Host             string // LDAP host
 	Port             int    // port number
+	LDAPType 		 string // AD or LDAP
 	SecurityProtocol SecurityProtocol
 	SkipVerify       bool
 	BindDN           string // Template for the Bind DN
@@ -202,15 +203,39 @@ func (ls *LDAPClient) ModifyPassword(name, passwd, newPassword string) error {
 	// bindUserDN(l, newUserDN, passwd)
 
 
-	// Will check on this later
-	// utf16 := unicode.UTF16(unicode.LittleEndian, unicode.IgnoreBOM)
-	// According to the MS docs in the links above
-	// The password needs to be enclosed in quotes
-	// pwdEncoded, _ := utf16.NewEncoder().String("\"testpassword\"")
-	// passwdEncoded, _ := utf16.NewEncoder().String(passwd)
-	// newPasswordEncoded, _ := utf16.NewEncoder().String(newPassword)
+
 
 	log.Printf("\nLDAP will execute password change on: %s", newUserDN)
+
+
+	// flow based on AD/LDAP
+	if ls.LDAPType == AD {
+		
+	ls.bindUserDNAgain(l, newUserDN, passwd)
+
+    utf16 := unicode.UTF16(unicode.LittleEndian, unicode.IgnoreBOM)
+	// According to the MS docs in the links above https://github.com/go-ldap/ldap/issues/106
+	// The password needs to be enclosed in quotes
+	// pwdEncoded, _ := utf16.NewEncoder().String("\"testpassword\"")
+
+	newPasswordEncoded, _ := utf16.NewEncoder().String(newPassword)
+
+	log.Printf("\nEncoded newPassword : %s", newPasswordEncoded)
+
+	passReq := &ldap.ModifyRequest{
+	DN: newUserDN, // DN for the user we're resetting
+	ReplaceAttributes: []ldap.PartialAttribute{
+		{"unicodePwd", []string{newPasswordEncoded}},
+	},
+	}
+	_, err = l.Modify(passReq)
+
+	if err != nil {
+		log.Printf("\n Not able to Change Password for user %s, reason: %v", newUserDN, err)
+	}
+	return err
+
+	} else {
 
 	ls.bindUserDNAgain(l, newUserDN, passwd)
 
@@ -220,8 +245,11 @@ func (ls *LDAPClient) ModifyPassword(name, passwd, newPassword string) error {
 	if err != nil {
 		log.Printf("\n Not able to Change Password for user %s, reason: %v", newUserDN, err)
 	}
-
 	return err
+
+
+	}
+	
 
 
 }
@@ -274,6 +302,7 @@ func NewLDAPClient() *LDAPClient {
 	return &LDAPClient{
 		Host:             envStr("LPW_HOST", ""),
 		Port:             envInt("LPW_PORT", 636), // 389
+		LDAPType:         envStr("LPW_TYPE", ""),
 		SecurityProtocol: securityProtocol,
 		SkipVerify:       envBool("LPW_SSL_SKIP_VERIFY", false),
 		BindDN:           envStr("LPW_BIND_DN", ""),
