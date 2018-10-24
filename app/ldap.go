@@ -7,7 +7,7 @@ import (
 
 
 	"gopkg.in/ldap.v2"
-	"golang.org/x/text/encoding/unicode"
+//	"golang.org/x/text/encoding/unicode"
 )
 
 // SecurityProtocol protocol type
@@ -58,7 +58,7 @@ func (ls *LDAPClient) bindDN(l *ldap.Conn) error {
 }
 
 
-func (ls *LDAPClient) bindUserDNAgain(l *ldap.Conn, newUserDN, passwd strng) error {
+func (ls *LDAPClient) bindUserDNAgain(l *ldap.Conn, newUserDN, passwd string) error {
 	log.Printf("\nBinding with userDN: %s", newUserDN)
 	log.Printf("\nBinding with userDN passwd: %s", passwd)
 	err := l.Bind(newUserDN, passwd)
